@@ -30,7 +30,7 @@ services:
   
   cloudflared:
     image: cloudflare/cloudflared:latest
-    restart: unless-stopped
+    restart: always
     container_name: cloudflared
     networks:
       - server_net
