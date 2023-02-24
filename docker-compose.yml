@@ -1,0 +1,63 @@
+version: '3'
+
+networks:
+  server_net:
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+services:
+  code-server:
+    image: lscr.io/linuxserver/code-server:latest
+    restart: always
+    container_name: code-server
+    networks:
+      - server_net
+    # ports:
+    #   - 8443:8443
+    volumes:
+    - ${PWD}/config:/config
+    environment:
+    - PUID
+    - PGID
+    - PASSWORD
+    - HASHED_PASSWORD
+    - SUDO_PASSWORD
+    - SUDO_PASSWORD_HASH
+    - PROXY_DOMAIN
+    - DEFAULT_WORKSPACE
+    - TZ
+  
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    container_name: cloudflared
+    networks:
+      - server_net
+    user: root
+    entrypoint: cloudflared tunnel --no-autoupdate run
+    depends_on:
+    - code-server
+    volumes:
+    - ${PWD}/cloudflared:/etc/cloudflared:ro
+    environment:
+    - TUNNEL_TOKEN
+    - TZ
+
+  watchtower:
+    # Watchtower will pull down your new image, gracefully shut down your existing container 
+    # and restart it with the same options that were used when it was deployed initially
+    # https://github.com/containrrr/watchtower
+    image: containrrr/watchtower
+    restart: always
+    container_name: watchtower
+    networks:
+      - server_net
+    depends_on: 
+    - code-server
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+    - WATCHTOWER_CLEANUP
+    - WATCHTOWER_SCHEDULE
+    - TZ
